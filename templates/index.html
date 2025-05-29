@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Activity Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.css" rel="stylesheet">
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-card { animation: slideIn 0.3s ease-out; }
+
+        /* For the radial progress bar */
+        .radial-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: var(--size);
+            height: var(--size);
+            border-radius: 50%;
+            background: 
+                radial-gradient(closest-side, white 0%, white calc(100% - var(--thickness) - 1px), transparent calc(100% - var(--thickness))), /* Adjusted for dark mode */
+                conic-gradient(var(--color, currentColor) calc(var(--value) * 1%), #e5e7eb 0); /* #e5e7eb is gray-200 */
+        }
+        .dark .radial-progress {
+             background:
+                radial-gradient(closest-side, #1f2937 0%, #1f2937 calc(100% - var(--thickness) - 1px), transparent calc(100% - var(--thickness))), /* dark:bg-gray-800 */
+                conic-gradient(var(--color, currentColor) calc(var(--value) * 1%), #374151 0); /* dark:bg-gray-700 for the track */
+        }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+    <div class="min-h-screen max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <header class="mb-8 flex justify-between items-center bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Productivity Pulse
+                </h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Last sync: <span id="lastApiUpdate">Fetching...</span></p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="themeToggle" class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    <svg id="sunIcon" class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+                    <svg id="moonIcon" class="w-6 h-6 text-blue-400 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <div class="relative" id="notificationBell">
+                    <button class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative">
+                        <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <!-- Notification dot can be dynamic later -->
+                        <!-- <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span> -->
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-6">
+            
+            <div class="md:col-span-2 lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl animate-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Efficiency Score</h3>
+                    <!-- <span id="efficiencyChange" class="text-xs px-2 py-1 bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-200 rounded-full">+0.0%</span> -->
+                </div>
+                <div id="radialProgressBar" class="radial-progress text-blue-600 dark:text-blue-400" style="--value:0; --size:12rem; --thickness:12px; --color: #3B82F6;" role="progressbar">
+                    <div class="text-center">
+                        <div id="efficiencyScoreValue" class="text-4xl font-bold">0%</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Overall Productive</div>
+                    </div>
+                </div>
+                 <p class="text-center mt-3 text-sm text-gray-500 dark:text-gray-400">
+                    Focus: <span id="totalFocusTime" class="font-medium">0h</span> / 
+                    Idle: <span id="totalIdleTime" class="font-medium">0h</span> (24h)
+                </p>
+            </div>
+
+            <div class="md:col-span-4 lg:col-span-6 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl animate-card">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold">Today's Focus Sessions (by hour)</h3>
+                    <!-- Time range buttons can be implemented later for more views -->
+                    <!-- <div class="flex space-x-2">
+                        <button class="text-xs px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Today</button>
+                    </div> -->
+                </div>
+                <div class="h-80">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 lg:col-span-4 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl animate-card">
+                <h3 class="text-lg font-semibold mb-6">App Usage (Last 24h)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                    <div class="col-span-1 flex justify-center items-center">
+                        <div class="h-48 w-48 sm:h-56 sm:w-56">
+                            <canvas id="appChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="appUsageLegend" class="col-span-1 space-y-3 self-center">
+                        <!-- Legend items will be populated here -->
+                         <p class="text-sm text-gray-500 dark:text-gray-400">Loading app usage...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 lg:col-span-4 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl animate-card">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold">Optimization Tips</h3>
+                    <button id="refreshSuggestions" class="text-blue-600 dark:text-blue-400 text-sm flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Refresh
+                    </button>
+                </div>
+                <div id="suggestionsContainer" class="space-y-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Loading tips...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME TOGGLE ---
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function applyTheme(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+        }
+
+        // Check local storage first
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme) {
+            applyTheme(storedTheme === 'dark');
+        } else {
+            applyTheme(prefersDark.matches); // Apply OS preference
+        }
+        
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            sunIcon.classList.toggle('hidden');
+            moonIcon.classList.toggle('hidden');
+            // Force chart redraw to adapt to theme colors (if configured for it)
+            if (activityChartInstance) activityChartInstance.update();
+            if (appChartInstance) appChartInstance.update();
+        });
+        prefersDark.addEventListener('change', (e) => { // Listen for OS theme changes
+            if (!localStorage.getItem('theme')) { // Only if no user override
+                 applyTheme(e.matches);
+                 if (activityChartInstance) activityChartInstance.update();
+                 if (appChartInstance) appChartInstance.update();
+            }
+        });
+
+        // --- CHART INSTANCES ---
+        let activityChartInstance = null;
+        let appChartInstance = null;
+
+        // --- CHART CONFIGURATION HELPERS ---
+        function getChartOptions() {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#F3F4F6'; // Adjusted for dark mode
+            const tickColor = isDarkMode ? '#9CA3AF' : '#6B7280'; // gray-400 dark, gray-500 light
+
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: false, // Usually false for line, true for pie/doughnut but we make custom
+                        labels: { color: tickColor }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: tickColor, precision: 0 },
+                        grid: { color: gridColor, drawBorder: false }
+                    },
+                    x: {
+                        ticks: { color: tickColor },
+                        grid: { color: gridColor, drawBorder: false }
+                    }
+                }
+            };
+        }
+        
+        // --- UI UPDATE FUNCTIONS ---
+        function updateEfficiencyScore(score, totalFocusHours, totalIdleHours) {
+            const radialBar = document.getElementById('radialProgressBar');
+            const scoreValueText = document.getElementById('efficiencyScoreValue');
+            const totalFocusTimeEl = document.getElementById('totalFocusTime');
+            const totalIdleTimeEl = document.getElementById('totalIdleTime');
+
+            radialBar.style.setProperty('--value', Math.round(score));
+            scoreValueText.textContent = `${Math.round(score)}%`;
+            totalFocusTimeEl.textContent = `${totalFocusHours.toFixed(1)}h`;
+            totalIdleTimeEl.textContent = `${totalIdleHours.toFixed(1)}h`;
+            
+            // Update color based on score
+            let scoreColor = '#3B82F6'; // Blue (default)
+            if (score < 40) scoreColor = '#EF4444'; // Red
+            else if (score < 70) scoreColor = '#F59E0B'; // Amber
+            radialBar.style.setProperty('--color', scoreColor);
+        }
+
+        function updateActivityChart(labels, data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const chartOptions = getChartOptions();
+            chartOptions.plugins.tooltip = {
+                 callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(0) + ' min';
+                        }
+                        return label;
+                    }
+                }
+            };
+
+
+            if (activityChartInstance) {
+                activityChartInstance.destroy();
+            }
+            activityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels, // e.g. ['00:00', '01:00', ...]
+                    datasets: [{
+                        label: 'Focus Minutes',
+                        data: data, // e.g. [0, 45, 30, ...]
+                        borderColor: '#3B82F6', // Blue-600
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: context => {
+                            const chartCtx = context.chart.ctx;
+                            const gradient = chartCtx.createLinearGradient(0, 0, 0, chartCtx.canvas.height);
+                            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)'); // Lighter blue
+                            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                            return gradient;
+                        },
+                        pointBackgroundColor: '#3B82F6',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#3B82F6'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        function updateAppUsageChart(appData) { // appData = [{title: 'VS Code', hours: 3.5}, ...]
+            const ctx = document.getElementById('appChart').getContext('2d');
+            const legendContainer = document.getElementById('appUsageLegend');
+            const chartOptions = getChartOptions();
+            chartOptions.plugins.legend.display = false; // We build a custom legend
+
+            // Sort data for consistent coloring and top N display
+            appData.sort((a, b) => b.hours - a.hours);
+            const topN = 5;
+            const displayData = appData.slice(0, topN);
+            const otherHours = appData.slice(topN).reduce((sum, app) => sum + app.hours, 0);
+            if (otherHours > 0) {
+                displayData.push({ title: 'Other', hours: otherHours });
+            }
+
+            const labels = displayData.map(app => app.title);
+            const dataValues = displayData.map(app => app.hours);
+            
+            // Define a color palette
+            const appColors = [
+                '#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#6366F1', '#D946EF'
+            ];
+
+            if (appChartInstance) {
+                appChartInstance.destroy();
+            }
+            
+            if (labels.length === 0) {
+                legendContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">No app usage data recorded in the last 24 hours.</p>`;
+                // Optionally clear the canvas or display a message on it
+                const context = ctx.canvas.getContext('2d');
+                context.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                context.textAlign = 'center';
+                context.fillStyle = document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#6B7280';
+                context.fillText("No data", ctx.canvas.width / 2, ctx.canvas.height / 2);
+
+                return;
+            }
+
+            appChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'App Usage (hours)',
+                        data: dataValues,
+                        backgroundColor: labels.map((_, i) => appColors[i % appColors.length]),
+                        borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#FFFFFF', // bg-gray-800 or white
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: { ...chartOptions, cutout: '65%' }
+            });
+
+            // Build custom legend
+            legendContainer.innerHTML = ''; // Clear previous legend
+            const totalHours = dataValues.reduce((sum, val) => sum + val, 0);
+            labels.forEach((label, index) => {
+                const percentage = totalHours > 0 ? (dataValues[index] / totalHours * 100).toFixed(0) : 0;
+                const legendItem = `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full" style="background-color: ${appColors[index % appColors.length]}"></div>
+                            <span class="text-sm truncate max-w-[120px] sm:max-w-[150px]" title="${label}">${label}</span>
+                        </div>
+                        <span class="text-sm font-medium">${percentage}% (${dataValues[index].toFixed(1)}h)</span>
+                    </div>
+                `;
+                legendContainer.innerHTML += legendItem;
+            });
+             if (labels.length === 0) {
+                legendContainer.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">No significant app usage to display.</p>`;
+            }
+        }
+
+        function updateSuggestions(suggestionsText, lastUpdated) {
+            const container = document.getElementById('suggestionsContainer');
+            container.innerHTML = ''; // Clear previous
+
+            if (!suggestionsText || suggestionsText.toLowerCase().includes("unable to fetch") || suggestionsText.toLowerCase().includes("pending")) {
+                 container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">${suggestionsText || 'No suggestions available currently.'}</p>`;
+                 return;
+            }
+
+            // Assuming suggestions are bullet points, split by newline.
+            // Gemini might use actual bullet characters or just newlines.
+            const tips = suggestionsText.split('\n').map(tip => tip.trim().replace(/^[\*\-\•\s]+/, '')).filter(tip => tip.length > 0);
+
+            if (tips.length === 0) {
+                container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">No specific optimization tips at the moment. Keep up the good work!</p>`;
+                return;
+            }
+
+            tips.forEach(tip => {
+                const tipElement = `
+                    <div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-950/50 rounded-xl border-l-4 border-blue-500 dark:border-blue-400">
+                        <p class="font-medium text-sm text-gray-800 dark:text-gray-100">${tip}</p>
+                    </div>
+                `;
+                // For actionable items, you might parse them differently if backend provides structured data
+                // Example for the "Cleanup Background Apps" style suggestion (if structured):
+                // <div class="p-4 ... flex items-center justify-between">
+                //     <div>
+                //         <p class="font-medium">${tip.title}</p>
+                //         <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${tip.description}</p>
+                //     </div>
+                //     <button class="px-3 py-1.5 text-sm ...">Action</button>
+                // </div>
+                container.innerHTML += tipElement;
+            });
+             if (lastUpdated) {
+                const updatedTimeEl = document.createElement('p');
+                updatedTimeEl.className = 'text-xs text-gray-400 dark:text-gray-500 mt-2 text-right';
+                updatedTimeEl.textContent = `Tips from: ${new Date(lastUpdated).toLocaleTimeString()}`;
+                container.appendChild(updatedTimeEl);
+            }
+        }
+
+        // --- DATA FETCHING ---
+        async function fetchDashboardData() {
+            console.log("Fetching dashboard data...");
+            try {
+                const response = await fetch('/api/activity-data');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("Data received:", data);
+
+                document.getElementById('lastApiUpdate').textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                // Update UI components
+                updateEfficiencyScore(data.productivity_score, data.total_focus_hours_24h, data.idle_hours_24h);
+                updateActivityChart(data.hourly_focus_labels, data.hourly_focus_today); // labels + data for focus minutes
+                updateAppUsageChart(data.focus_apps_24h);
+                updateSuggestions(data.suggestions, data.suggestions_last_updated);
+
+            } catch (error) {
+                console.error("Could not fetch dashboard data:", error);
+                document.getElementById('lastApiUpdate').textContent = "Error loading data";
+                // Display error messages in components if needed
+                 const suggestionsContainer = document.getElementById('suggestionsContainer');
+                 suggestionsContainer.innerHTML = `<p class="text-sm text-red-500 dark:text-red-400">Error loading suggestions. Please try refreshing.</p>`;
+                 // You could add similar error states for charts
+            }
+        }
+        
+        document.getElementById('refreshSuggestions').addEventListener('click', () => {
+             const container = document.getElementById('suggestionsContainer');
+             container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">Refreshing tips...</p>`;
+             fetchDashboardData(); // Re-fetch all data, or have a specific endpoint for suggestions
+        });
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDashboardData(); // Initial fetch
+            setInterval(fetchDashboardData, 5 * 60 * 1000); // Refresh every 5 minutes
+
+            // Update clock in header (separate from API sync time)
+            const updateTimeEl = document.getElementById('updateTime'); // This was in your original HTML, let's keep it for current time if desired
+            if (updateTimeEl) { // If you rename lastApiUpdate to updateTime, remove this
+                 function updateClock() {
+                    updateTimeEl.textContent = 
+                        new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                }
+                updateClock();
+                setInterval(updateClock, 30000); // Update clock every 30s
+            } else { // Use the lastApiUpdate as the primary time indicator
+                 // document.getElementById('lastApiUpdate').textContent = "Live"; // Or something similar
+            }
+        });
+
+    </script>
+</body>
+</html>
